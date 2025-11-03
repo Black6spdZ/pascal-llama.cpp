@@ -1,0 +1,21 @@
+name: Windows CUDA sm_61
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CUDA 11.8
+        shell: powershell
+        run: choco install cuda --version=11.8 -y
+      - name: Configure (Pascal sm_61)
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DLLAMA_CUBLAS=ON -DCMAKE_CUDA_ARCHITECTURES=61
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: llama-sm61-windows
+          path: |
+            build/bin/**
+            build/bin/Release/**
