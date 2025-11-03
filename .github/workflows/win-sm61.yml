@@ -1,21 +1,41 @@
-name: Windows CUDA sm_61
-on: workflow_dispatch
+name: Pascal CUDA A/B
+
+on:
+  workflow_dispatch: {}
+
 jobs:
   build:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        cuda: ['11.8.0','12.2.0']
     steps:
       - uses: actions/checkout@v4
-      - name: Install CUDA 11.8
-        shell: powershell
-        run: choco install cuda --version=11.8 -y
-      - name: Configure (Pascal sm_61)
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DLLAMA_CUBLAS=ON -DCMAKE_CUDA_ARCHITECTURES=61
+
+      # Install the requested CUDA Toolkit (sets CUDA_PATH)
+      - name: Install CUDA ${{ matrix.cuda }}
+        uses: Jimver/cuda-toolkit@v0.2.17
+        with:
+          cuda: ${{ matrix.cuda }}
+          method: network
+
+      # Configure: Pascal (SM_61), cuBLAS on, build server + cli + bench
+      - name: Configure (SM_61)
+        run: >
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          -DLLAMA_CUBLAS=ON
+          -DLLAMA_BUILD_SERVER=ON
+          -DLLAMA_BUILD_BENCHMARKS=ON
+          -DCMAKE_CUDA_ARCHITECTURES=61
+
       - name: Build
         run: cmake --build build --config Release --parallel
-      - name: Upload binaries
+
+      - name: Upload binaries (${{ matrix.cuda }})
         uses: actions/upload-artifact@v4
         with:
-          name: llama-sm61-windows
+          name: llama-sm61-cuda-${{ matrix.cuda }}
           path: |
-            build/bin/**
-            build/bin/Release/**
+            build/bin/Release/llama-server.exe
+            build/bin/Release/llama-cli.exe
+            build/bin/Release/llama-bench.exe
